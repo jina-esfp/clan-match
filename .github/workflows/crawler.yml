@@ -2,8 +2,8 @@ name: 평생 클랜 매치 자동 크롤링
 
 on:
   schedule:
-    # 매시간 정각에 실행 (한국시간 기준)
-    - cron: '0 * * * *'
+    # 30분마다 실행
+    - cron: '*/30 * * * *'
   workflow_dispatch: # 수동 실행도 가능
 
 jobs:
@@ -18,36 +18,36 @@ jobs:
       with:
         python-version: '3.9'
     
-    - name: Chrome과 ChromeDriver 설치
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        
-        # ChromeDriver 설치
-        CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | awk -F. '{print $1}')
-        CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
-        
-        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-        unzip -o chromedriver_linux64.zip
-        sudo mv chromedriver /usr/local/bin/
-        sudo chmod +x /usr/local/bin/chromedriver
-        
-        # 버전 확인
-        google-chrome --version
-        chromedriver --version
+    - name: Chrome 브라우저 설정
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
     
     - name: 의존성 설치
       run: |
         pip install selenium==4.15.0
+        pip install webdriver-manager==4.0.1
         pip install pytz
         
+        # ChromeDriver 자동 설치
+        pip install webdriver-manager
+        
     - name: 크롤링 실행
-      run: python crawler.py
+      run: |
+        # ChromeDriver 경로 설정
+        export WDM_LOG=false
+        python crawler.py
     
-    - name: 데이터 커밋
+    - name: 데이터 커밋 및 푸시
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data.json
-        git diff --quiet && git diff --staged --quiet || git commit -m "🔄 자동 업데이트: $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M:%S')"
-        git push
+        
+        # 변경사항이 있을 때만 커밋
+        if ! git diff --cached --quiet; then
+          git commit -m "🔄 자동 업데이트: $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M:%S')"
+          git push
+        else
+          echo "변경사항 없음"
+        fi
