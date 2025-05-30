@@ -18,31 +18,36 @@ jobs:
       with:
         python-version: '3.9'
     
-    - name: Chrome 브라우저 설정
-      uses: browser-actions/setup-chrome@latest
-      with:
-        chrome-version: stable
-    
     - name: 의존성 설치
       run: |
         pip install selenium==4.15.0
         pip install webdriver-manager==4.0.1
         pip install pytz
-        
-        # ChromeDriver 자동 설치
-        pip install webdriver-manager
+        pip install requests
         
     - name: 크롤링 실행
       run: |
-        # ChromeDriver 경로 설정
-        export WDM_LOG=false
         python crawler.py
+    
+    - name: 디버그 정보 출력
+      if: always()
+      run: |
+        echo "=== data.json 내용 ==="
+        cat data.json | head -20
+        echo ""
+        echo "=== 파일 크기 ==="
+        ls -la data.json
     
     - name: 데이터 커밋 및 푸시
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add data.json
+        
+        # 디버그 스크린샷이 있으면 추가
+        if [ -f debug_screenshot.png ]; then
+          git add debug_screenshot.png
+        fi
         
         # 변경사항이 있을 때만 커밋
         if ! git diff --cached --quiet; then
