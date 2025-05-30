@@ -1,0 +1,39 @@
+name: 평생 클랜 매치 자동 크롤링
+
+on:
+  schedule:
+    # 매시간 정각에 실행 (한국시간 기준)
+    - cron: '0 * * * *'
+  workflow_dispatch: # 수동 실행도 가능
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Python 설정
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Chrome 설치
+      uses: browser-actions/setup-chrome@latest
+    
+    - name: 의존성 설치
+      run: |
+        pip install selenium==4.15.0
+        pip install webdriver-manager==4.0.1
+        pip install pytz
+        
+    - name: 크롤링 실행
+      run: python crawler.py
+    
+    - name: 데이터 커밋
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data.json
+        git diff --quiet && git diff --staged --quiet || git commit -m "🔄 자동 업데이트: $(TZ=Asia/Seoul date +'%Y-%m-%d %H:%M:%S')"
+        git push
